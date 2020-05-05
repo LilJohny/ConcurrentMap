@@ -85,7 +85,7 @@ class ConcurrentHashmap {
  public:
   ConcurrentHashmap() {
 	for (size_t i = 0; i < numSegments; i++) {
-	  segments.push_back(Segment());
+	  segments.emplace_back();
 	}
 
   }
@@ -134,19 +134,5 @@ class ConcurrentHashmap {
 	return std::vector<std::pair<Key, T >>(map.begin(), map.end());
   }
 };
-
-template<class Key, class T>
-void pro1(ConcurrentHashmap<Key, T> &m, std::mutex &mut) {
-  std::string alpha = "abcdefghijklmnopqrstuvwxyz";
-  for (char i : alpha) {
-	if (!m.keyExists(std::string(1, i)))
-	  m.set_pair(std::make_pair(std::string(1, i), 1));
-	else {
-	  auto curVal = m.get(std::string(1, i));
-	  m.set_pair(std::make_pair(std::string(1, i), curVal + 1));
-	}
-  }
-
-}
 
 #endif //AKSLAB5_CONCURRENT_HASHMAP_H
