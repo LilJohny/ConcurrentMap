@@ -240,7 +240,6 @@ void indexing_thread(std::mutex &indexing_mutex,
                      concurrent_queue<std::pair<std::string, std::string>> &raw_files_q,
                      ConcurrentHashmap<Key, T> &concurrentMap) {
   while (true) {
-    std::cout << "BBBBBBB" << std::endl;
     auto raw_file = raw_files_q.front();
     std::string file_buffer = raw_file.first;
     std::string ext = raw_file.second;
@@ -251,7 +250,6 @@ void indexing_thread(std::mutex &indexing_mutex,
     std::string file_content;
     if (ext == ".txt") {
       file_content = convert_to_normalized_utf_string(file_buffer);
-      std::cout << file_content << "AAAA" << std::endl;
     } else if (ext == ".zip") {
       auto archive_contents = get_archive_content(file_buffer);
       for (int i = 0; i < archive_contents.size(); ++i) {
