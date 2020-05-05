@@ -7,13 +7,11 @@
 #include <fstream>
 #include <boost/filesystem.hpp>
 #include <boost/locale.hpp>
-#include <boost/iterator/transform_iterator.hpp>
 #include <archive.h>
 #include <archive_entry.h>
 #include <boost/algorithm/string/replace.hpp>
 #include "concurrent_hashmap.h"
 #include "FileDoesNotExistsException.h"
-#include "concurrent_hashmap.h"
 #include "concurrent_queue.h"
 
 template<typename K, typename V>
