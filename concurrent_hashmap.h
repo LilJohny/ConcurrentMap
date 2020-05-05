@@ -19,7 +19,7 @@
 template<class Key, class T>
 class ConcurrentHashmap {
 private:
-    size_t numSegments;
+    int numSegments;
     std::hash<Key> hasher;
     std::vector<std::unique_ptr<std::mutex>> mutex_vect;
 
@@ -81,12 +81,14 @@ private:
 
     };
 
-    std::vector<Segment> segments{numSegments};
+    std::vector<Segment> segments;
 
 public:
-    explicit ConcurrentHashmap(const size_t &mapNumSegments) {
+    explicit ConcurrentHashmap(int mapNumSegments) {
         numSegments = mapNumSegments;
-        for (size_t i = 0; i < numSegments; i++) {
+        mutex_vect.reserve(numSegments);
+        segments.reserve(numSegments);
+        for (int i = 0; i < numSegments; i++) {
             segments.emplace_back();
             mutex_vect.emplace_back();
         }
