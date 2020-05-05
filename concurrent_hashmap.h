@@ -36,7 +36,7 @@ class ConcurrentHashmap {
     std::mutex *mutex_ptr;
 
    public:
-    Segment(std::mutex &mut_ptr) {
+    explicit Segment(std::mutex &mut_ptr) {
       this->base_map = {};
       mutex_ptr = &mut_ptr;
     }
@@ -154,13 +154,12 @@ class ConcurrentHashmap {
 template<class Key, class T>
 void pro1(ConcurrentHashmap<Key, T> &m, std::mutex &mut) {
   std::string alpha = "abcdefghijklmnopqrstuvwxyz";
-  for (int i = 0; i < alpha.size(); i++) {
-
-    if (!m.keyExists(std::string(1, alpha[i])))
-      m.set_pair(std::make_pair(std::string(1, alpha[i]), 1));
+  for (char i : alpha) {
+    if (!m.keyExists(std::string(1, i)))
+      m.set_pair(std::make_pair(std::string(1, i), 1));
     else {
-      auto curVal = m.get(std::string(1, alpha[i]));
-      m.set_pair(std::make_pair(std::string(1, alpha[i]), curVal + 1));
+      auto curVal = m.get(std::string(1, i));
+      m.set_pair(std::make_pair(std::string(1, i), curVal + 1));
     }
   }
 
