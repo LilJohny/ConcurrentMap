@@ -18,121 +18,137 @@
 
 template<class Key, class T>
 class ConcurrentHashmap {
- private:
-  static const size_t numSegments = 16;
-  std::hash<Key> hasher;
+private:
+    size_t numSegments{};
+    std::hash<Key> hasher;
+    std::vector<std::unique_ptr<std::mutex>> mutex_vect;
 
-  size_t hash(Key x) {
-	size_t h = hasher(x);
-	return h % numSegments;
-  }
+    size_t hash(Key x) {
+        size_t h = hasher(x);
+        return h % numSegments;
+    }
 
-  class Segment {
-   private:
-	std::map<Key, T> base_map{};
-	mutable std::mutex mutex;
+    class Segment {
+    private:
+        std::map<Key, T> base_map{};
 
-   public:
-	Segment() = default;
-	Segment(Segment &&segment) noexcept {
-	  base_map = segment.base_map;
-	}
-	size_t size() {
-	  std::lock_guard<std::mutex> lg{mutex};
-	  auto curSize = base_map.size();
-	  return curSize;
-	}
+    public:
+        Segment() = default;
 
-	auto getMap() {
-	  std::lock_guard<std::mutex> lg{mutex};
-	  auto resMap = base_map;
-	  return resMap;
-	}
+        Segment(Segment &&segment) noexcept {
+            base_map = segment.base_map;
+        }
 
-	void add_pair(std::pair<Key, T> p) {
-	  std::lock_guard<std::mutex> lg{mutex};
-	  auto map_iter = base_map.find(p.first);
-	  if (map_iter != base_map.end())
-		map_iter->second = p.second;
-	  else
-		base_map.insert(p);
-	}
+        Segment(Segment &segment) noexcept {
+            base_map = std::move(segment.base_map);
+        }
 
-	auto get(Key k) {
-	  std::lock_guard<std::mutex> lg{mutex};
-	  auto value = base_map.find(k);
-	  return value;
+        size_t size() {
+            auto curSize = base_map.size();
+            return curSize;
+        }
 
-	}
+        auto getMap() {
+            std::map<Key, T> resMap;
+            resMap = std::map<Key, T>(base_map);
+            return resMap;
+        }
 
-	size_t count(Key k) {
-	  std::lock_guard<std::mutex> lg{mutex};
-	  auto count = base_map.count(k);
-	  return count;
-	}
+        void add_pair(std::pair<Key, T> p) {
+            auto map_iter = base_map.find(p.first);
+            if (map_iter != base_map.end())
+                map_iter->second = p.second;
+            else
+                base_map.insert(p);
+        }
 
-	std::vector<std::pair<Key, T>> toVector() {
-	  std::lock_guard<std::mutex> lg{mutex};
-	  auto vect = std::vector<std::pair<Key, T>>(base_map.begin(), base_map.end());
-	  return vect;
+        auto get(Key k) {
+            auto value = base_map.find(k);
+            return value;
 
-	}
+        }
 
-  };
+        size_t count(Key k) {
+            auto count = base_map.count(k);
+            return count;
+        }
 
-  std::vector<Segment> segments{numSegments};
+        std::vector<std::pair<Key, T>> toVector() {
+            auto vect = std::vector<std::pair<Key, T>>(base_map.begin(), base_map.end());
+            return vect;
 
- public:
-  ConcurrentHashmap() {
-	for (size_t i = 0; i < numSegments; i++) {
-	  segments.emplace_back();
-	}
+        }
 
-  }
+    };
 
-  void set_pair(std::pair<Key, T> p) {
-	//adds new pair if key not exists
-	//replaces previous if key exists
-	size_t h = hash(p.first);
-	segments[h].add_pair(p);
-  }
+    std::vector<Segment> segments{numSegments};
 
-  T get(Key k) {
-	size_t h = hash(k);
-	auto value = segments[h].get(k)->second;
-	return value;
+public:
+    explicit ConcurrentHashmap(size_t numSegments) {
+        numSegments = numSegments;
+        for (size_t i = 0; i < numSegments; i++) {
+            segments.emplace_back();
+            mutex_vect.emplace_back();
+        }
 
-  }
+    }
 
-  bool keyExists(Key k) {
-	size_t h = hash(k);
-	auto exists = segments[h].count(k) > 0;
-	return exists;
-  }
+    void set_pair(std::pair<Key, T> p) {
+        //adds new pair if key not exists
+        //replaces previous if key exists
+        size_t h = hash(p.first);
+        std::lock_guard<std::mutex> lg{*mutex_vect[h]};
+        segments[h].add_pair(p);
+    }
 
-  size_t size() {
-	size_t s = 0;
-	for (auto &seg: segments) {
-	  s += seg.size();
-	}
-	return s;
-  }
+    T get(Key k) {
+        size_t h = hash(k);
+        std::lock_guard<std::mutex> lg{*mutex_vect[h]};
+        auto value = segments[h].get(k)->second;
+        return value;
 
-  std::map<Key, T> getMap() {
-	std::map<Key, T> mergedMap = {};
-	for (auto &seg: segments) {
-	  auto curMap = seg.getMap();
-	  for (auto itr = curMap.begin(); itr != curMap.end(); ++itr) {
-		mergedMap.emplace(std::pair<Key, T>(itr->first, itr->second));
-	  }
-	}
-	return mergedMap;
-  }
+    }
 
-  std::vector<std::pair<Key, T>> toVector() {
-	std::map<Key, T> map = getMap();
-	return std::vector<std::pair<Key, T >>(map.begin(), map.end());
-  }
+    bool keyExists(Key k) {
+        size_t h = hash(k);
+        std::lock_guard<std::mutex> lg{*mutex_vect[h]};
+        auto exists = segments[h].count(k) > 0;
+        return exists;
+    }
+
+    size_t size() {
+        size_t s = 0;
+        for (size_t i = 0; i < numSegments; i++) {
+            std::lock_guard<std::mutex> lg{*mutex_vect[i]};
+            auto seg = segments[i];
+            s += seg.size();
+        }
+
+        return s;
+    }
+
+    std::map<Key, T> getMap() {
+        std::map<Key, T> mergedMap = {};
+        for (size_t i = 0; i < numSegments; i++) {
+            mutex_vect[i]->lock();
+        }
+
+        for (size_t i = 0; i < numSegments; i++) {
+            auto seg = segments[i];
+            auto curMap = seg.getMap();
+            for (auto itr = curMap.begin(); itr != curMap.end(); ++itr) {
+                mergedMap.emplace(std::pair<Key, T>(itr->first, itr->second));
+            }
+            mutex_vect[i]->unlock();
+
+        }
+        return mergedMap;
+    }
+
+    std::vector<std::pair<Key, T>> toVector() {
+        std::map<Key, T> map = getMap();
+        return std::vector<std::pair<Key, T >>(map.begin(), map.end());
+    }
 };
 
 #endif //AKSLAB5_CONCURRENT_HASHMAP_H

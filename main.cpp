@@ -325,7 +325,7 @@ int main(int argc, char *argv[]) {
   }
   concurrent_queue<std::string> file_names_q(names_queue_size);
   concurrent_queue<std::pair<std::string, std::string>> raw_files_q(files_queue_size);
-  auto concurrentMap = ConcurrentHashmap<std::string, size_t>();
+  auto concurrentMap = ConcurrentHashmap<std::string, size_t>(16);
 
   std::mutex indexing_mutex;
 
@@ -367,15 +367,15 @@ int main(int argc, char *argv[]) {
   stem_path(name_sorted_ouf_file_path);
   stem_path(value_sorted_ouf_file_path);
 
-//  auto vector_result = map_to_vector(result);
+  auto vector_result = map_to_vector(result);
 //
   auto total_finish = get_current_time_fenced();
 //
-//  sort(vector_result.begin(), vector_result.end(), sort_by_first);
-//  write_file(name_sorted_ouf_file_path, vector_result);
+  sort(vector_result.begin(), vector_result.end(), sort_by_first);
+  write_file(name_sorted_ouf_file_path, vector_result);
 //
-//  sort(vector_result.begin(), vector_result.end(), sort_by_sec);
-//  write_file(value_sorted_ouf_file_path, vector_result);
+  sort(vector_result.begin(), vector_result.end(), sort_by_sec);
+  write_file(value_sorted_ouf_file_path, vector_result);
   std::cout << "Total: " << to_us(total_finish - total_start) << std::endl;
   return 0;
 }
