@@ -84,9 +84,9 @@ private:
     std::vector<Segment> segments{numSegments};
 
 public:
-    explicit ConcurrentHashmap(size_t mapNumSegments) {
+    explicit ConcurrentHashmap(const size_t &mapNumSegments) {
         numSegments = mapNumSegments;
-        for (size_t i = 0; i < 16; i++) {
+        for (size_t i = 0; i < numSegments; i++) {
             segments.emplace_back();
             mutex_vect.emplace_back();
         }
