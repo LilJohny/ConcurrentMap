@@ -1,0 +1,6 @@
+indir="/mnt/iso/0"
+out_by_value="../result_value.txt"
+out_by_name="../result_name.txt"
+indexing_threads=2
+max_names_queue_size=10
+max_files_queue_size=10

@@ -267,7 +267,9 @@ void indexing_thread(std::mutex &indexing_mutex,
   }
 
 }
-
+void show_not_int_error_message(const std::string &key_name) {
+  std::cout << "Key " << key_name << " should be of type int, but it is`nt" << std::endl;
+}
 int main(int argc, char *argv[]) {
   auto total_start = get_current_time_fenced();
   std::string filename;
@@ -287,9 +289,8 @@ int main(int argc, char *argv[]) {
     std::cout << ex.what();
     return 2;
   }
-  std::vector<std::string> compulsory_keys = {"indir", "out_by_value", "out_by_name", "indexing_threads",
-                                              "merging_threads", "max_names_queue_size", "max_files_queue_size",
-                                              "max_words_queue_size"};
+  std::vector<std::string> compulsory_keys =
+      {"indir", "out_by_value", "out_by_name", "indexing_threads", "max_names_queue_size", "max_files_queue_size"};
   std::map<std::string, std::string> config;
   try {
     config = parseConfig(filename, compulsory_keys);
@@ -300,8 +301,25 @@ int main(int argc, char *argv[]) {
 
   auto in_dir_path = config["indir"];
 
-  auto names_queue_size = std::stoi(config["max_names_queue_size"]);
-  auto files_queue_size = std::stoi(config["max_files_queue_size"]);
+  auto names_queue_size_str = config["max_names_queue_size"];
+  auto files_queue_size_str = config["max_files_queue_size"];
+
+  int names_queue_size;
+  int files_queue_size;
+
+  try {
+    names_queue_size = std::stoi(names_queue_size_str);
+  } catch (std::invalid_argument &ex) {
+    show_not_int_error_message("max_names_queue_size");
+    return -1;
+  }
+
+  try {
+    files_queue_size = std::stoi(files_queue_size_str);
+  } catch (std::invalid_argument &ex) {
+    show_not_int_error_message("max_files_queue_size");
+    return -1;
+  }
 
   stem_path(in_dir_path);
   try {
