@@ -325,7 +325,7 @@ int main(int argc, char *argv[]) {
   }
   concurrent_queue<std::string> file_names_q(names_queue_size);
   concurrent_queue<std::pair<std::string, std::string>> raw_files_q(files_queue_size);
-  auto concurrentMap =  ConcurrentHashmap<std::string, size_t>();
+  auto concurrentMap = ConcurrentHashmap<std::string, size_t>();
 
   std::mutex indexing_mutex;
 
@@ -342,15 +342,13 @@ int main(int argc, char *argv[]) {
   std::thread enum_t(enum_thread, in_dir_path, std::ref(file_names_q));
   std::thread read_t(file_reading_thread, std::ref(file_names_q), std::ref(raw_files_q));
 
-//  indexing_threads.reserve(indexing_threads_num);
-//  for (int i = 0; i < indexing_threads_num; ++i) {
-//	indexing_threads.emplace_back(indexing_thread<std::string, size_t>, std::ref(indexing_mutex),
-//								  std::ref(raw_files_q), std::ref(concurrentMap));
-//  }
+  indexing_threads.reserve(indexing_threads_num);
+  for (int i = 0; i < indexing_threads_num; ++i) {
+	indexing_threads.emplace_back(indexing_thread<std::string, size_t>, std::ref(raw_files_q), std::ref(concurrentMap));
+  }
 
   enum_t.join();
   read_t.join();
-  indexing_thread<std::string, size_t>( std::ref(raw_files_q), std::ref(concurrentMap));
 
   for (auto &indexing_thread : indexing_threads) {
 	indexing_thread.join();

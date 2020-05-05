@@ -31,12 +31,12 @@ class ConcurrentHashmap {
    private:
 	std::map<Key, T> base_map{};
 	mutable std::mutex mutex;
-	Segment(Segment && segment) {
 
-	}
    public:
 	Segment() = default;
-
+	Segment(Segment &&segment) noexcept {
+	  base_map = segment.base_map;
+	}
 	size_t size() {
 	  std::lock_guard<std::mutex> lg{mutex};
 	  auto curSize = base_map.size();
