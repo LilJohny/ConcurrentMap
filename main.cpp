@@ -190,7 +190,7 @@ inline bool validate_string(std::string current_string) {
 void word_count_to_map(const std::string &lines, ConcurrentHashmap<std::string, size_t> &concurrentMap) {
 
   boost::locale::boundary::segment_index<std::string::const_iterator> map(boost::locale::boundary::word,
-																		  lines.begin(), lines.end());
+  lines.begin(), lines.end());
 
   for (boost::locale::boundary::ssegment_index::iterator it = map.begin(), e = map.end(); it != e; ++it) {
 	std::string current_string = (*it);
@@ -234,8 +234,7 @@ void file_reading_thread(concurrent_queue<std::string> &file_names_q,
 }
 
 template<class Key, class T>
-void indexing_thread(std::mutex &indexing_mutex,
-					 concurrent_queue<std::pair<std::string, std::string>> &raw_files_q,
+void indexing_thread(concurrent_queue<std::pair<std::string, std::string>> &raw_files_q,
 					 ConcurrentHashmap<Key, T> &concurrentMap) {
   while (true) {
 	auto raw_file = raw_files_q.front();
@@ -326,7 +325,7 @@ int main(int argc, char *argv[]) {
   }
   concurrent_queue<std::string> file_names_q(names_queue_size);
   concurrent_queue<std::pair<std::string, std::string>> raw_files_q(files_queue_size);
-  auto concurrentMap = ConcurrentHashmap<std::string, size_t>();
+  auto concurrentMap =  ConcurrentHashmap<std::string, size_t>();
 
   std::mutex indexing_mutex;
 
@@ -343,14 +342,15 @@ int main(int argc, char *argv[]) {
   std::thread enum_t(enum_thread, in_dir_path, std::ref(file_names_q));
   std::thread read_t(file_reading_thread, std::ref(file_names_q), std::ref(raw_files_q));
 
-  indexing_threads.reserve(indexing_threads_num);
-  for (int i = 0; i < indexing_threads_num; ++i) {
-	indexing_threads.emplace_back(indexing_thread<std::string, size_t>, std::ref(indexing_mutex),
-								  std::ref(raw_files_q), std::ref(concurrentMap));
-  }
+//  indexing_threads.reserve(indexing_threads_num);
+//  for (int i = 0; i < indexing_threads_num; ++i) {
+//	indexing_threads.emplace_back(indexing_thread<std::string, size_t>, std::ref(indexing_mutex),
+//								  std::ref(raw_files_q), std::ref(concurrentMap));
+//  }
 
   enum_t.join();
   read_t.join();
+  indexing_thread<std::string, size_t>( std::ref(raw_files_q), std::ref(concurrentMap));
 
   for (auto &indexing_thread : indexing_threads) {
 	indexing_thread.join();
@@ -369,16 +369,15 @@ int main(int argc, char *argv[]) {
   stem_path(name_sorted_ouf_file_path);
   stem_path(value_sorted_ouf_file_path);
 
-  auto vector_result = map_to_vector(result);
-
+//  auto vector_result = map_to_vector(result);
+//
   auto total_finish = get_current_time_fenced();
-
-  sort(vector_result.begin(), vector_result.end(), sort_by_first);
-  write_file(name_sorted_ouf_file_path, vector_result);
-
-  sort(vector_result.begin(), vector_result.end(), sort_by_sec);
-  write_file(value_sorted_ouf_file_path, vector_result);
+//
+//  sort(vector_result.begin(), vector_result.end(), sort_by_first);
+//  write_file(name_sorted_ouf_file_path, vector_result);
+//
+//  sort(vector_result.begin(), vector_result.end(), sort_by_sec);
+//  write_file(value_sorted_ouf_file_path, vector_result);
   std::cout << "Total: " << to_us(total_finish - total_start) << std::endl;
-
   return 0;
 }
