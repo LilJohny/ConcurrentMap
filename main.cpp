@@ -151,9 +151,10 @@ get_archive_file_contents(const std::string &filename, std::vector<std::string> 
 	throw std::runtime_error("Error reading archive");
   }
   void *buf;
+  int64_t length;
   while (archive_read_next_header(archive, &entry) == ARCHIVE_OK) {
 	if (archive_entry_filetype(entry) == AE_IFREG) {
-	  int64_t length = archive_entry_size(entry);
+	  length = archive_entry_size(entry);
 	  if (length < MAX_FILE_SIZE) {
 		buf = operator new(length);
 		if (!buf) {
@@ -167,7 +168,7 @@ get_archive_file_contents(const std::string &filename, std::vector<std::string> 
 	}
   }
   archive_read_free(archive);
-  std::string result = static_cast<char *>(buf);
+  std::string result = std::string(static_cast<char *>(buf), length);
   operator delete(buf);
   return result;
 }
@@ -190,7 +191,7 @@ inline bool validate_string(std::string current_string) {
 void word_count_to_map(const std::string &lines, ConcurrentHashmap<std::string, int> &concurrentMap) {
 
   boost::locale::boundary::segment_index<std::string::const_iterator> map(boost::locale::boundary::word,
-  lines.begin(), lines.end());
+																		  lines.begin(), lines.end());
 
   for (boost::locale::boundary::ssegment_index::iterator it = map.begin(), e = map.end(); it != e; ++it) {
 	std::string current_string = (*it);
@@ -327,7 +328,6 @@ int main(int argc, char *argv[]) {
   concurrent_queue<std::pair<std::string, std::string>> raw_files_q(files_queue_size);
   auto concurrentMap = ConcurrentHashmap<std::string, int>(16);
 
-
   std::vector<std::thread> indexing_threads;
 
   boost::locale::generator gen;
@@ -340,37 +340,35 @@ int main(int argc, char *argv[]) {
   std::thread enum_t(enum_thread, in_dir_path, std::ref(file_names_q));
   std::thread read_t(file_reading_thread, std::ref(file_names_q), std::ref(raw_files_q));
 
-//  indexing_threads.reserve(indexing_threads_num);
-//  for (int i = 0; i < indexing_threads_num; ++i) {
-//	indexing_threads.emplace_back(indexing_thread<std::string, size_t>, std::ref(raw_files_q), std::ref(concurrentMap));
-//  }
+  indexing_threads.reserve(indexing_threads_num);
+  for (int i = 0; i < indexing_threads_num; ++i) {
+	indexing_threads.emplace_back(indexing_thread<std::string, int>, std::ref(raw_files_q), std::ref(concurrentMap));
+  }
 
   enum_t.join();
   read_t.join();
-  indexing_thread<std::string, int>(std::ref(raw_files_q), std::ref(concurrentMap));
-//  for (auto &indexing_thread : indexing_threads) {
-//	indexing_thread.join();
-//  }
+  for (auto &indexing_thread : indexing_threads) {
+	indexing_thread.join();
+  }
 
+  auto result = concurrentMap.getMap();
+  std::cout << result.size() << std::endl;
 
-//  auto result = concurrentMap.getMap();
-//  std::cout << result.size() << std::endl;
-//
-//  auto name_sorted_ouf_file_path = config["out_by_name"];
-//  auto value_sorted_ouf_file_path = config["out_by_value"];
-//
-//  stem_path(name_sorted_ouf_file_path);
-//  stem_path(value_sorted_ouf_file_path);
-//
-//  auto vector_result = map_to_vector(result);
+  auto name_sorted_ouf_file_path = config["out_by_name"];
+  auto value_sorted_ouf_file_path = config["out_by_value"];
+
+  stem_path(name_sorted_ouf_file_path);
+  stem_path(value_sorted_ouf_file_path);
+
+  auto vector_result = map_to_vector(result);
 
   auto total_finish = get_current_time_fenced();
 
-//  sort(vector_result.begin(), vector_result.end(), sort_by_first);
-//  write_file(name_sorted_ouf_file_path, vector_result);
-//
-//  sort(vector_result.begin(), vector_result.end(), sort_by_sec);
-//  write_file(value_sorted_ouf_file_path, vector_result);
+  sort(vector_result.begin(), vector_result.end(), sort_by_first);
+  write_file(name_sorted_ouf_file_path, vector_result);
+
+  sort(vector_result.begin(), vector_result.end(), sort_by_sec);
+  write_file(value_sorted_ouf_file_path, vector_result);
   std::cout << "Total: " << to_us(total_finish - total_start) << std::endl;
   return 0;
 }
