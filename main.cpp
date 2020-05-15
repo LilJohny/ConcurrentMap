@@ -91,10 +91,8 @@ parseConfig(const std::string &filepath, const std::vector<std::string> &compuls
   return configs;
 }
 
-std::string convert_to_normalized_utf_string(const std::string &str) {
-  boost::locale::generator gen;
-  gen.locale_cache_enabled(true);
-  std::locale utf_locale = gen("UTF-8");
+std::string convert_to_normalized_utf_string(const std::string &str, boost::locale::generator &gen) {
+  auto utf_locale = gen("UTF-8");
   auto system_locale = gen("");
   std::string result = boost::locale::conv::to_utf<char>(str, system_locale);
   result = boost::locale::normalize(result);
@@ -236,7 +234,7 @@ void file_reading_thread(concurrent_queue<std::string> &file_names_q,
 
 template<class Key, class T>
 void indexing_thread(concurrent_queue<std::pair<std::string, std::string>> &raw_files_q,
-					 ConcurrentHashmap<Key, T> &concurrentMap) {
+					 ConcurrentHashmap<Key, T> &concurrentMap, boost::locale::generator &gen) {
   while (true) {
 	auto raw_file = raw_files_q.front();
 	std::string file_buffer = raw_file.first;
@@ -247,14 +245,14 @@ void indexing_thread(concurrent_queue<std::pair<std::string, std::string>> &raw_
 	raw_files_q.pop();
 	std::string file_content;
 	if (ext == ".txt") {
-	  file_content = convert_to_normalized_utf_string(file_buffer);
+	  file_content = convert_to_normalized_utf_string(file_buffer, gen);
 	} else if (ext == ".zip") {
 	  auto archive_contents = get_archive_content(file_buffer);
 	  for (int i = 0; i < archive_contents.size(); ++i) {
 		auto cur_ext = boost::filesystem::extension(archive_contents[i]);
 		if (cur_ext == ".txt") {
 		  file_content = get_archive_file_contents(archive_contents[i], archive_contents, file_buffer);
-		  file_content = convert_to_normalized_utf_string(file_content);
+		  file_content = convert_to_normalized_utf_string(file_content, gen);
 		}
 	  }
 	}
@@ -342,7 +340,10 @@ int main(int argc, char *argv[]) {
 
   indexing_threads.reserve(indexing_threads_num);
   for (int i = 0; i < indexing_threads_num; ++i) {
-	indexing_threads.emplace_back(indexing_thread<std::string, int>, std::ref(raw_files_q), std::ref(concurrentMap));
+	indexing_threads.emplace_back(indexing_thread<std::string, int>,
+								  std::ref(raw_files_q),
+								  std::ref(concurrentMap),
+								  std::ref(gen));
   }
 
   enum_t.join();
