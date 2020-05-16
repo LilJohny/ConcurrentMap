@@ -1,10 +1,9 @@
-#define MAX_FILE_SIZE 10000000
+#define MAX_FILE_SIZE 20000000
 
 #include<thread>
 #include<atomic>
 #include <map>
 #include <vector>
-#include <fstream>
 #include <boost/filesystem.hpp>
 #include <boost/locale.hpp>
 #include <archive.h>

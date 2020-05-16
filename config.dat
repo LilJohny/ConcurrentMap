@@ -1,4 +1,4 @@
-indir="/mnt/iso/0"
+indir="../dat"
 out_by_value="../result_value.txt"
 out_by_name="../result_name.txt"
 indexing_threads=2
